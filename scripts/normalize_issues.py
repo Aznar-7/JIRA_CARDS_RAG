@@ -5,11 +5,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+# Cargamos la URL de Jira para poder armar el link final de cada tarjeta
 load_dotenv()
 
 JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
 
-# Config de directorios
+# Directorios de entrada, salida y archivo con las tarjetas que cambiaron
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw"
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
@@ -18,7 +19,7 @@ CHANGED_FILE = SYNC_DIR / "changed_issues.json"
 
 NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
 
-# Crear los directorios si no existen
+# Si existe la lista de cambios la usamos; si no existe, despues normalizamos todo
 def load_changed_issue_keys():
     if not CHANGED_FILE.exists():
         return None
@@ -27,7 +28,7 @@ def load_changed_issue_keys():
         return json.load(f)
 
 
-# Extraer nombre del user
+# Jira puede mandar distintos datos del usuario, agarramos el nombre mas entendible que haya
 def get_display_name(user_obj):
     if not user_obj:
         return None
@@ -40,10 +41,11 @@ def get_display_name(user_obj):
     )
 
 
-# Extraer nombre del sprint de la tarjeta
+# Sacamos el nombre del sprint aunque Jira lo mande como lista, objeto o texto
 def extract_sprint_name(sprint_field):
     """
-    Sprint puede venir como lista, objeto o None según configuración de Jira., Podrian ponerlo estandard los culiados.
+    Sprint puede venir como lista, objeto o None segun como este configurado Jira.
+    Aca bancamos todos esos formatos y devolvemos siempre el nombre.
     """
     if not sprint_field:
         return None
@@ -65,17 +67,16 @@ def extract_sprint_name(sprint_field):
     return str(sprint_field)
 
 
-# Extraer Texto de la Descripción
+# Convertimos la descripcion de Jira a texto plano para poder buscarla y mostrarla sin vueltas
 def extract_description_text(description):
     """
-    Jira Cloud suele traer description en formato ADF:
+    Jira Cloud suele mandar la descripcion en formato ADF:
     {
       "type": "doc",
       "content": [...]
     }
 
-    Esta función hace una extracción simple de texto.
-    Después la mejoramos.
+    Recorremos esa estructura y nos quedamos con el texto limpio.
     """
     if not description:
         return None
@@ -85,6 +86,7 @@ def extract_description_text(description):
 
     texts = []
 
+    # Recorremos el ADF porque el texto puede venir anidado en varios niveles
     def walk(node):
         if isinstance(node, dict):
             if node.get("type") == "text":
@@ -102,7 +104,7 @@ def extract_description_text(description):
     return "\n".join(t for t in texts if t).strip() or None
 
 
-# Normalizar los comentarios, porque la gente habla giladas
+# Dejamos los comentarios con los mismos campos simples que usamos en el resto del proyecto
 def normalize_comments(fields):
     comment_block = fields.get("comment") or {}
     comments = comment_block.get("comments") or []
@@ -121,7 +123,7 @@ def normalize_comments(fields):
     return normalized_comments
 
 
-# Limpiar los attachments, sacar links de imagenes u otros archivos
+# Ordenamos los adjuntos y marcamos cuales son imagenes para poder tratarlos distinto mas adelante
 def normalize_attachments(fields):
     attachments = fields.get("attachment") or []
     normalized_attachments = []
@@ -142,7 +144,7 @@ def normalize_attachments(fields):
     return normalized_attachments
 
 
-# Links a otras tarjetas
+# Unificamos los links entrantes y salientes para no depender del formato medio enroscado de Jira
 def normalize_issue_links(fields):
     issue_links = fields.get("issuelinks") or []
     normalized_links = []
@@ -174,7 +176,7 @@ def normalize_issue_links(fields):
     return normalized_links
 
 
-# Extraer las subtareas asi sabemos si rompieron un bicho grande en bichos mas chicos
+# Dejamos las subtareas con key, resumen y estado, que es lo que nos sirve para dar contexto
 def normalize_subtasks(fields):
     subtasks = fields.get("subtasks") or []
 
@@ -188,7 +190,7 @@ def normalize_subtasks(fields):
     ]
 
 
-# Limpiar el historial (changelog) asi chusmeamos que hicieron
+# Aplanamos el changelog para que cada cambio quede como un registro facil de leer
 def normalize_changelog(issue):
     changelog = issue.get("changelog") or {}
     histories = changelog.get("histories") or []
@@ -211,11 +213,11 @@ def normalize_changelog(issue):
     return normalized_history
 
 
-# Inferir quien resolvio el ticket por el historial de cambios (porque aveces el assignee no es el que lo resolvio)
+# Inferimos quien resolvio la tarjeta porque el assignee actual no siempre fue quien la cerro
 def infer_resolved_by(history):
     """
-    Intenta inferir quién resolvió mirando quién movió la tarjeta a un estado final.
-    No es 100% exacto, pero sirve como aproximación auditable.
+    Buscamos quien movio la tarjeta a un estado final.
+    No es infalible, pero deja una aproximacion bastante clara para revisar.
     """
     final_status_keywords = [
         "finalizada",
@@ -236,7 +238,7 @@ def infer_resolved_by(history):
     return None
 
 
-# Función Principal de Normalización
+# Juntamos todos los datos utiles del raw y los dejamos en un formato parejo
 def normalize_issue(issue):
     fields = issue.get("fields", {})
 
@@ -246,7 +248,7 @@ def normalize_issue(issue):
     issue_type = fields.get("issuetype") or {}
     priority = fields.get("priority") or {}
 
-    # Campos custom detectados en tu Jira
+    # Estos ids son campos custom de este Jira, por eso no tienen nombres lindos en el raw
     sprint_field = fields.get("customfield_10020")
     glpi_ticket = fields.get("customfield_10270")
     focus_area = fields.get("customfield_10237")
@@ -289,11 +291,12 @@ def normalize_issue(issue):
     return normalized
 
 
-# Ejecutar todo este bondi de normalización
+# Elegimos que archivos procesar y generamos un JSON normalizado por tarjeta
 def main():
     changed_issue_keys = load_changed_issue_keys()
 
     if changed_issue_keys is not None:
+        # Si el detector corrio y no encontro cambios, no hace falta rehacer nada
         if not changed_issue_keys:
             print("No hay tarjetas nuevas o modificadas para normalizar.")
             return
@@ -306,6 +309,7 @@ def main():
 
         print(f"Normalizando solo tarjetas modificadas: {len(raw_files)}")
     else:
+        # Si nunca se genero changed_issues.json hacemos una corrida completa
         raw_files = list(RAW_DIR.glob("*.json"))
         print("No existe changed_issues.json. Normalizando todo.")
 
@@ -314,6 +318,7 @@ def main():
         return
 
     for raw_file in raw_files:
+        # Cada raw se transforma por separado y termina en un solo archivo normalizado
         with open(raw_file, "r", encoding="utf-8") as f:
             issue = json.load(f)
 

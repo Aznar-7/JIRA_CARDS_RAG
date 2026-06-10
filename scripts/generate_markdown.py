@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-# Config de directorios
+# Directorios de entrada, salida y archivo con las tarjetas que cambiaron
 BASE_DIR = Path(__file__).resolve().parent.parent
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 MARKDOWN_DIR = BASE_DIR / "data" / "markdown"
@@ -10,6 +10,7 @@ CHANGED_FILE = SYNC_DIR / "changed_issues.json"
 
 MARKDOWN_DIR.mkdir(parents=True, exist_ok=True)
 
+# Si existe la lista de cambios la usamos; si no existe, despues generamos todos los Markdown
 def load_changed_issue_keys():
     if not CHANGED_FILE.exists():
         return None
@@ -17,9 +18,9 @@ def load_changed_issue_keys():
     with open(CHANGED_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# Funciones para generar Markdown a partir de los datos normalizados ( issue normalizado -> markdown con formato estandar para cada tarjeta)
+# Estas funciones arman las distintas partes del Markdown a partir del JSON normalizado
 
-# Funcion de formateo para evitar valores vacios o nulos en el markdown, y mostrar un guion en su lugar
+# Evitamos celdas vacias o valores nulos mostrando un guion en su lugar
 def value_or_dash(value):
     if value is None:
         return "-"
@@ -30,7 +31,7 @@ def value_or_dash(value):
     return value
 
 
-# Funcion parecida a la anterior pero para listas, asi no quedan listas vacias o con formato raro
+# Para las listas usamos una sola linea separada por comas, que queda mejor en las tablas
 def list_or_dash(items):
     if not items:
         return "-"
@@ -38,15 +39,15 @@ def list_or_dash(items):
     return ", ".join(str(item) for item in items)
 
 
-# Funcion para asegurar que los textos vacios no rompan el markdown
+# Los textos largos tambien pasan por el mismo control de vacios
 def safe_text(value):
     """
-    Evita romper el Markdown si el texto viene vacío.
+    Si no vino texto ponemos un guion y el Markdown sigue quedando prolijo.
     """
     return value_or_dash(value)
 
 
-# Funcion para armar la seccion de comentarios con autor y fechas
+# Armamos cada comentario como una seccion separada para no mezclar autores ni fechas
 def render_comments(comments):
     if not comments:
         return "No hay comentarios registrados.\n"
@@ -66,7 +67,7 @@ def render_comments(comments):
     return "\n".join(lines)
 
 
-# Funcion para armar la tabla de adjuntos y marcar cuales son imagenes
+# Mostramos los adjuntos en tabla y dejamos marcado si despues se pueden procesar como imagen
 def render_attachments(attachments):
     if not attachments:
         return "No hay adjuntos registrados.\n"
@@ -95,7 +96,7 @@ def render_attachments(attachments):
     return "\n".join(lines)
 
 
-# Funcion para mostrar las tarjetas relacionadas y el tipo de relacion
+# Pasamos las relaciones entre tarjetas a una tabla mas facil de seguir
 def render_issue_links(issue_links):
     if not issue_links:
         return "No hay tarjetas relacionadas registradas.\n"
@@ -116,7 +117,7 @@ def render_issue_links(issue_links):
     return "\n".join(lines) + "\n"
 
 
-# Funcion para armar la tabla de subtareas
+# Las subtareas van en una tabla corta para entender rapido como se dividio el trabajo
 def render_subtasks(subtasks):
     if not subtasks:
         return "No hay subtareas registradas.\n"
@@ -135,7 +136,7 @@ def render_subtasks(subtasks):
     return "\n".join(lines) + "\n"
 
 
-# Funcion para mostrar el historial completo o solo los ultimos cambios si se pasa un limite
+# Por defecto mostramos todo el historial, pero se puede limitar si el Markdown queda enorme
 def render_history(history, limit=None):
     if not history:
         return "No hay historial registrado.\n"
@@ -161,11 +162,11 @@ def render_history(history, limit=None):
     return "\n".join(lines) + "\n"
 
 
-# Funcion para generar un resumen simple para IA, por ahora sin usar ningun modelo
+# Este resumen junta los datos principales en texto corrido; por ahora no llama a ningun modelo
 def generate_ai_summary(issue):
     """
-    Este resumen todavía NO usa IA.
-    Es un resumen estructurado simple para que después sirva como base de chunks.
+    Por ahora esto no llama a ninguna IA.
+    Solo acomoda los datos importantes para que despues sirvan como base de los chunks.
     """
     issue_key = value_or_dash(issue.get("issue_key"))
     title = value_or_dash(issue.get("title"))
@@ -188,7 +189,7 @@ Descripción: {description}
 """
 
 
-#Funcion de generacion del md
+# Juntamos todas las secciones y devolvemos el Markdown completo de una tarjeta
 def generate_markdown(issue):
     issue_key = value_or_dash(issue.get("issue_key"))
     title = value_or_dash(issue.get("title"))
@@ -260,11 +261,12 @@ def generate_markdown(issue):
     return md
 
 
-# Funcion principal que recorre los json normalizados y genera un md por cada tarjeta
+# Elegimos que tarjetas procesar y generamos un archivo Markdown por cada una
 def main():
     changed_issue_keys = load_changed_issue_keys()
 
     if changed_issue_keys is not None:
+        # Si el detector corrio y no encontro cambios, los Markdown actuales ya sirven
         if not changed_issue_keys:
             print("No hay tarjetas nuevas o modificadas para generar Markdown.")
             return
@@ -277,6 +279,7 @@ def main():
 
         print(f"Generando Markdown solo para tarjetas modificadas: {len(normalized_files)}")
     else:
+        # Sin changed_issues.json hacemos una corrida completa para no dejar tarjetas afuera
         normalized_files = list(NORMALIZED_DIR.glob("*.json"))
         print("No existe changed_issues.json. Generando Markdown de todo.")
 
@@ -285,6 +288,7 @@ def main():
         return
 
     for normalized_file in normalized_files:
+        # Cada normalizado genera su Markdown con el mismo nombre de tarjeta
         with open(normalized_file, "r", encoding="utf-8") as f:
             issue = json.load(f)
 
