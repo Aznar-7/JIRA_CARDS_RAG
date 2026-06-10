@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 
+# Directorios de entrada, salida y archivo con las tarjetas que cambiaron
 BASE_DIR = Path(__file__).resolve().parent.parent
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 CHUNKS_DIR = BASE_DIR / "data" / "chunks"
@@ -11,6 +12,7 @@ CHANGED_FILE = SYNC_DIR / "changed_issues.json"
 CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# Si falta un dato ponemos un guion para que el texto del chunk no quede cortado o raro
 def value_or_dash(value):
     if value is None:
         return "-"
@@ -21,6 +23,7 @@ def value_or_dash(value):
     return value
 
 
+# Si existe la lista de cambios la usamos; si no existe, despues generamos chunks de todo
 def load_changed_issue_keys():
     if not CHANGED_FILE.exists():
         return None
@@ -29,6 +32,7 @@ def load_changed_issue_keys():
         return json.load(f)
 
 
+# Repetimos los datos principales en cada chunk para poder filtrar sin abrir la tarjeta completa
 def build_metadata(issue, chunk_type):
     return {
         "issue_key": issue.get("issue_key"),
@@ -50,6 +54,7 @@ def build_metadata(issue, chunk_type):
     }
 
 
+# Armamos el formato comun de todos los chunks y evitamos guardar textos vacios
 def make_chunk(issue, chunk_type, text):
     if not text or not str(text).strip():
         return None
@@ -65,12 +70,14 @@ def make_chunk(issue, chunk_type, text):
     }
 
 
+# Separamos una tarjeta por temas para que una busqueda traiga justo la parte que interesa
 def generate_chunks_for_issue(issue):
     chunks = []
 
     issue_key = value_or_dash(issue.get("issue_key"))
     title = value_or_dash(issue.get("title"))
 
+    # El chunk general sirve para preguntas sobre estado, responsables, fechas y datos principales
     general_text = f"""
 Tarjeta: {issue_key}
 Título: {title}
@@ -91,6 +98,7 @@ Link Jira: {value_or_dash(issue.get("jira_url"))}
 
     chunks.append(make_chunk(issue, "general", general_text))
 
+    # La descripcion va aparte porque suele tener el contexto mas importante de la tarjeta
     description_text = f"""
 Tarjeta {issue_key} - {title}
 
@@ -100,6 +108,7 @@ Descripción original:
 
     chunks.append(make_chunk(issue, "description", description_text))
 
+    # Cada comentario tiene su propio chunk para no mezclar conversaciones distintas
     comments = issue.get("comments") or []
     for index, comment in enumerate(comments, start=1):
         comment_text = f"""
@@ -115,6 +124,7 @@ Contenido:
 
         chunks.append(make_chunk(issue, f"comment_{index}", comment_text))
 
+    # Los adjuntos se agrupan por metadata; por ahora no analizamos el contenido del archivo
     attachments = issue.get("attachments") or []
     if attachments:
         attachment_lines = []
@@ -142,6 +152,7 @@ Nota: estos adjuntos todavía no fueron analizados visualmente. En una etapa pos
 
         chunks.append(make_chunk(issue, "attachments", attachments_text))
 
+    # El historial queda junto porque normalmente se consulta como una linea de tiempo
     history = issue.get("history") or []
     if history:
         history_lines = []
@@ -160,6 +171,7 @@ Historial de cambios:
 
         chunks.append(make_chunk(issue, "history", history_text))
 
+    # Las relaciones van aparte para preguntas sobre dependencias o tarjetas vinculadas
     issue_links = issue.get("issue_links") or []
     if issue_links:
         link_lines = []
@@ -178,6 +190,7 @@ Tarjetas relacionadas:
 
         chunks.append(make_chunk(issue, "issue_links", links_text))
 
+    # Las subtareas tambien se separan para recuperar rapido como se dividio el trabajo
     subtasks = issue.get("subtasks") or []
     if subtasks:
         subtask_lines = []
@@ -196,13 +209,16 @@ Subtareas:
 
         chunks.append(make_chunk(issue, "subtasks", subtasks_text))
 
+    # make_chunk devuelve None cuando no hay contenido, asi que limpiamos esos casos
     return [chunk for chunk in chunks if chunk]
 
 
+# Elegimos que normalizados procesar y generamos un JSON de chunks por tarjeta
 def main():
     changed_issue_keys = load_changed_issue_keys()
 
     if changed_issue_keys is not None:
+        # Si el detector corrio y no encontro cambios, los chunks actuales ya siguen sirviendo
         if not changed_issue_keys:
             print("No hay tarjetas nuevas o modificadas para generar chunks.")
             return
@@ -215,6 +231,7 @@ def main():
 
         print(f"Generando chunks solo para tarjetas modificadas: {len(normalized_files)}")
     else:
+        # Sin changed_issues.json hacemos una corrida completa para no dejar tarjetas afuera
         normalized_files = list(NORMALIZED_DIR.glob("*.json"))
         print("No existe changed_issues.json. Generando chunks de todo.")
 
@@ -223,6 +240,7 @@ def main():
         return
 
     for normalized_file in normalized_files:
+        # Cada tarjeta termina en un archivo que contiene todos sus chunks
         with open(normalized_file, "r", encoding="utf-8") as f:
             issue = json.load(f)
 
