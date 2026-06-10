@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ RAG Porta · Jira Extraction Pipeline
+# ⚡ RAG  · Jira Extraction Pipeline
 
 ### De Jira a conocimiento estructurado, trazable y listo para RAG
 
@@ -19,7 +19,7 @@ chunking e integración con soluciones de IA.
 
 ## ✨ ¿Qué hace este proyecto?
 
-RAG Porta transforma información de Jira en archivos locales claros, consistentes
+RAG  transforma información de Jira en archivos locales claros, consistentes
 y fáciles de consumir por personas o sistemas de recuperación aumentada por
 generación (**RAG**).
 
@@ -195,7 +195,7 @@ python scripts/pipeline.py --mode incremental
 ## 📁 Estructura del proyecto
 
 ```text
-rag-porta/
+rag/
 ├── scripts/
 │   ├── pipeline.py                 # Orquesta el proceso completo
 │   ├── sync_jira.py                # Sync full e incremental
@@ -595,6 +595,6 @@ pipeline evita reprocesar archivos innecesariamente.
 
 <div align="center">
 
-### Jira entra desordenado. RAG Porta lo deja listo para encontrar, entender y reutilizar.
+### Jira entra desordenado. RAG  lo deja listo para encontrar, entender y reutilizar.
 
 </div>
