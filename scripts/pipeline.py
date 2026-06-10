@@ -1,8 +1,8 @@
-# Esta cosita magica va a hacer:
-#1. Sincronizar Jira
-#2. Detectar tarjetas nuevas/modificadas
-#3. Normalizar solo modificadas
-#4. Generar Markdown solo de modificadas
+# Este script corre todo el proceso de punta a punta:
+# 1. Sincroniza Jira
+# 2. Detecta tarjetas nuevas o modificadas
+# 3. Normaliza solamente lo que cambio
+# 4. Genera los Markdown que haga falta
 
 import argparse
 import json
@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 
+# Directorios donde estan los scripts, los estados de sync y los logs de cada corrida
 BASE_DIR = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = BASE_DIR / "scripts"
 LOGS_DIR = BASE_DIR / "data" / "logs"
@@ -20,14 +21,17 @@ SYNC_DIR = BASE_DIR / "data" / "sync"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# Fecha legible para guardar cuando arranco y termino cada paso
 def now_iso():
     return datetime.now().isoformat(timespec="seconds")
 
 
+# Armamos un id distinto por corrida para no pisar los logs anteriores
 def build_run_id():
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
+# Leemos un JSON y devolvemos el valor por defecto si todavia no existe
 def read_json_file(path, default=None):
     if default is None:
         default = None
@@ -39,11 +43,36 @@ def read_json_file(path, default=None):
         return json.load(f)
 
 
+# Guardamos los logs y resumenes con formato facil de leer
 def write_json_file(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+# Argparse confunde valores como -1d con opciones nuevas, asi que los pegamos a --since antes de parsear
+def normalize_since_argument(arguments):
+    normalized = []
+    index = 0
+
+    while index < len(arguments):
+        argument = arguments[index]
+
+        if (
+            argument == "--since"
+            and index + 1 < len(arguments)
+            and not arguments[index + 1].startswith("--")
+        ):
+            normalized.append(f"--since={arguments[index + 1]}")
+            index += 2
+            continue
+
+        normalized.append(argument)
+        index += 1
+
+    return normalized
+
+
+# Ejecutamos un paso, mostramos su salida y devolvemos toda la info necesaria para el log
 def run_step(command, step_name):
     print("\n" + "=" * 80)
     print(f"Ejecutando paso: {step_name}")
@@ -60,7 +89,7 @@ def run_step(command, step_name):
 
     finished_at = now_iso()
 
-    # Mostramos salida en consola igual que antes
+    # Aunque capturemos la salida para el log, tambien la mostramos en consola
     if result.stdout:
         print(result.stdout)
 
@@ -84,6 +113,7 @@ def run_step(command, step_name):
     return step_log
 
 
+# Armamos los comandos y frenamos el pipeline apenas falla alguno de los pasos
 def main():
     parser = argparse.ArgumentParser(description="Pipeline completo read-only de Jira para RAG Porta")
 
@@ -108,11 +138,12 @@ def main():
         help='Fecha manual para incremental. Ej: "2026-06-01" o "-1d"'
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(normalize_since_argument(sys.argv[1:]))
 
     run_id = build_run_id()
     started_at = now_iso()
 
+    # El log se va actualizando despues de cada paso, asi queda algo util incluso si falla a mitad
     pipeline_log = {
         "run_id": run_id,
         "mode": args.mode,
@@ -132,6 +163,7 @@ def main():
 
     python_executable = sys.executable
 
+    # Primero armamos el comando de sync con los argumentos que llegaron al pipeline
     sync_command = [
         python_executable,
         str(SCRIPTS_DIR / "sync_jira.py"),
@@ -144,6 +176,7 @@ def main():
     if args.since:
         sync_command.extend(["--since", args.since])
 
+    # El orden importa porque cada paso usa los archivos que genero el anterior
     steps = [
         {
             "name": "Sincronización Jira",
@@ -179,12 +212,14 @@ def main():
 
             write_json_file(log_file, pipeline_log)
 
+            # Si un paso falla no seguimos, porque los resultados siguientes quedarian inconsistentes
             if step_log["status"] == "error":
                 pipeline_log["status"] = "error"
                 pipeline_log["finished_at"] = now_iso()
                 write_json_file(log_file, pipeline_log)
                 sys.exit(step_log["returncode"])
 
+        # Sumamos al log final la lista de tarjetas que realmente se procesaron
         changed_file = SYNC_DIR / "changed_issues.json"
         changed_issues = read_json_file(changed_file, default=[])
 
@@ -202,6 +237,7 @@ def main():
         print("=" * 80)
 
     except Exception as error:
+        # Tambien dejamos registrado cualquier error inesperado del propio pipeline
         pipeline_log["status"] = "error"
         pipeline_log["finished_at"] = now_iso()
         pipeline_log["error"] = str(error)

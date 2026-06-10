@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import urllib3
@@ -232,6 +233,29 @@ def validate_env():
         raise ValueError(f"Faltan variables en .env: {', '.join(missing)}")
 
 
+# Argparse toma valores como -1d como si fueran otra opcion, asi que los pegamos a --since
+def normalize_since_argument(arguments):
+    normalized = []
+    index = 0
+
+    while index < len(arguments):
+        argument = arguments[index]
+
+        if (
+            argument == "--since"
+            and index + 1 < len(arguments)
+            and not arguments[index + 1].startswith("--")
+        ):
+            normalized.append(f"--since={arguments[index + 1]}")
+            index += 2
+            continue
+
+        normalized.append(argument)
+        index += 1
+
+    return normalized
+
+
 # Funcion principal que lee los argumentos y ejecuta el modo de sync elegido
 def main():
     validate_env()
@@ -259,7 +283,7 @@ def main():
         help='Fecha manual para incremental. Ej: "2026-06-01" o "-1d"'
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(normalize_since_argument(sys.argv[1:]))
 
     if args.mode == "full":
         run_full_sync(max_results=args.max_results)
