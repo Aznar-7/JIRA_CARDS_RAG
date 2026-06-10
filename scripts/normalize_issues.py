@@ -16,12 +16,19 @@ NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 
 NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
 
+
 # Extraer nombre del user
 def get_display_name(user_obj):
     if not user_obj:
         return None
 
-    return user_obj.get("displayName") or user_obj.get("name") or user_obj.get("emailAddress")
+    return (
+        user_obj.get("displayName")
+        or user_obj.get("name")
+        or user_obj.get("emailAddress")
+        or user_obj.get("accountId")
+    )
+
 
 # Extraer nombre del sprint de la tarjeta
 def extract_sprint_name(sprint_field):
@@ -35,7 +42,6 @@ def extract_sprint_name(sprint_field):
         if not sprint_field:
             return None
 
-        # Tomamos el último sprint, normalmente el más reciente/relevante
         last_sprint = sprint_field[-1]
 
         if isinstance(last_sprint, dict):
@@ -47,6 +53,7 @@ def extract_sprint_name(sprint_field):
         return sprint_field.get("name")
 
     return str(sprint_field)
+
 
 # Extraer Texto de la Descripción
 def extract_description_text(description):
@@ -84,6 +91,141 @@ def extract_description_text(description):
 
     return "\n".join(t for t in texts if t).strip() or None
 
+
+# Normalizar los comentarios, porque la gente habla giladas
+def normalize_comments(fields):
+    comment_block = fields.get("comment") or {}
+    comments = comment_block.get("comments") or []
+
+    normalized_comments = []
+
+    for comment in comments:
+        normalized_comments.append({
+            "id": comment.get("id"),
+            "author": get_display_name(comment.get("author")),
+            "created_at": comment.get("created"),
+            "updated_at": comment.get("updated"),
+            "body": extract_description_text(comment.get("body")),
+        })
+
+    return normalized_comments
+
+
+# Limpiar los attachments, sacar links de imagenes u otros archivos
+def normalize_attachments(fields):
+    attachments = fields.get("attachment") or []
+    normalized_attachments = []
+
+    for attachment in attachments:
+        normalized_attachments.append({
+            "id": attachment.get("id"),
+            "filename": attachment.get("filename"),
+            "mime_type": attachment.get("mimeType"),
+            "size": attachment.get("size"),
+            "author": get_display_name(attachment.get("author")),
+            "created_at": attachment.get("created"),
+            "content_url": attachment.get("content"),
+            "thumbnail_url": attachment.get("thumbnail"),
+            "is_image": (attachment.get("mimeType") or "").startswith("image/"),
+        })
+
+    return normalized_attachments
+
+
+# Links a otras tarjetas
+def normalize_issue_links(fields):
+    issue_links = fields.get("issuelinks") or []
+    normalized_links = []
+
+    for link in issue_links:
+        link_type = link.get("type") or {}
+
+        inward_issue = link.get("inwardIssue")
+        outward_issue = link.get("outwardIssue")
+
+        if inward_issue:
+            normalized_links.append({
+                "direction": "inward",
+                "type": link_type.get("inward"),
+                "issue_key": inward_issue.get("key"),
+                "summary": (inward_issue.get("fields") or {}).get("summary"),
+                "status": ((inward_issue.get("fields") or {}).get("status") or {}).get("name"),
+            })
+
+        if outward_issue:
+            normalized_links.append({
+                "direction": "outward",
+                "type": link_type.get("outward"),
+                "issue_key": outward_issue.get("key"),
+                "summary": (outward_issue.get("fields") or {}).get("summary"),
+                "status": ((outward_issue.get("fields") or {}).get("status") or {}).get("name"),
+            })
+
+    return normalized_links
+
+
+# Extraer las subtareas asi sabemos si rompieron un bicho grande en bichos mas chicos
+def normalize_subtasks(fields):
+    subtasks = fields.get("subtasks") or []
+
+    return [
+        {
+            "issue_key": subtask.get("key"),
+            "summary": (subtask.get("fields") or {}).get("summary"),
+            "status": ((subtask.get("fields") or {}).get("status") or {}).get("name"),
+        }
+        for subtask in subtasks
+    ]
+
+
+# Limpiar el historial (changelog) asi chusmeamos que hicieron
+def normalize_changelog(issue):
+    changelog = issue.get("changelog") or {}
+    histories = changelog.get("histories") or []
+
+    normalized_history = []
+
+    for history in histories:
+        author = get_display_name(history.get("author"))
+        created_at = history.get("created")
+
+        for item in history.get("items") or []:
+            normalized_history.append({
+                "author": author,
+                "created_at": created_at,
+                "field": item.get("field"),
+                "from": item.get("fromString"),
+                "to": item.get("toString"),
+            })
+
+    return normalized_history
+
+
+# Inferir quien resolvio el ticket por el historial de cambios (porque aveces el assignee no es el que lo resolvio)
+def infer_resolved_by(history):
+    """
+    Intenta inferir quién resolvió mirando quién movió la tarjeta a un estado final.
+    No es 100% exacto, pero sirve como aproximación auditable.
+    """
+    final_status_keywords = [
+        "finalizada",
+        "done",
+        "resuelta",
+        "resolved",
+        "closed",
+        "cerrada"
+    ]
+
+    for item in reversed(history):
+        if (item.get("field") or "").lower() == "status":
+            to_status = (item.get("to") or "").lower()
+
+            if any(keyword in to_status for keyword in final_status_keywords):
+                return item.get("author")
+
+    return None
+
+
 # Función Principal de Normalización
 def normalize_issue(issue):
     fields = issue.get("fields", {})
@@ -97,6 +239,14 @@ def normalize_issue(issue):
     # Campos custom detectados en tu Jira
     sprint_field = fields.get("customfield_10020")
     glpi_ticket = fields.get("customfield_10270")
+    focus_area = fields.get("customfield_10237")
+
+    comments = normalize_comments(fields)
+    attachments = normalize_attachments(fields)
+    issue_links = normalize_issue_links(fields)
+    subtasks = normalize_subtasks(fields)
+    history = normalize_changelog(issue)
+    inferred_resolved_by = infer_resolved_by(history)
 
     normalized = {
         "issue_key": issue_key,
@@ -106,15 +256,22 @@ def normalize_issue(issue):
         "priority": priority.get("name"),
         "sprint": extract_sprint_name(sprint_field),
         "glpi_ticket": glpi_ticket,
+        "focus_area": focus_area,
         "assignee": get_display_name(fields.get("assignee")),
         "reporter": get_display_name(fields.get("reporter")),
         "creator": get_display_name(fields.get("creator")),
+        "resolved_by_inferred": inferred_resolved_by,
         "created_at": fields.get("created"),
         "updated_at": fields.get("updated"),
         "resolved_at": fields.get("resolutiondate"),
         "description": extract_description_text(fields.get("description")),
         "labels": fields.get("labels") or [],
         "components": [c.get("name") for c in fields.get("components", [])],
+        "comments": comments,
+        "attachments": attachments,
+        "issue_links": issue_links,
+        "subtasks": subtasks,
+        "history": history,
         "jira_url": f"{JIRA_BASE_URL}/browse/{issue_key}",
         "raw_file": f"data/raw/{issue_key}.json",
     }
@@ -122,6 +279,7 @@ def normalize_issue(issue):
     return normalized
 
 
+# Ejecutar todo este bondi de normalización
 def main():
     raw_files = list(RAW_DIR.glob("*.json"))
 
