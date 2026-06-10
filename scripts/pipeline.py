@@ -203,6 +203,13 @@ def main():
                 str(SCRIPTS_DIR / "generate_markdown.py")
             ],
         },
+        {
+            "name": "Generación de chunks RAG",
+            "command": [
+                python_executable,
+                str(SCRIPTS_DIR / "generate_chunks.py")
+    ],
+},
     ]
 
     try:
