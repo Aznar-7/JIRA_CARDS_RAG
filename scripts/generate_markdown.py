@@ -5,8 +5,17 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 MARKDOWN_DIR = BASE_DIR / "data" / "markdown"
+SYNC_DIR = BASE_DIR / "data" / "sync"
+CHANGED_FILE = SYNC_DIR / "changed_issues.json"
 
 MARKDOWN_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_changed_issue_keys():
+    if not CHANGED_FILE.exists():
+        return None
+
+    with open(CHANGED_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 # Funciones para generar Markdown a partir de los datos normalizados ( issue normalizado -> markdown con formato estandar para cada tarjeta)
 
@@ -253,7 +262,23 @@ def generate_markdown(issue):
 
 # Funcion principal que recorre los json normalizados y genera un md por cada tarjeta
 def main():
-    normalized_files = list(NORMALIZED_DIR.glob("*.json"))
+    changed_issue_keys = load_changed_issue_keys()
+
+    if changed_issue_keys is not None:
+        if not changed_issue_keys:
+            print("No hay tarjetas nuevas o modificadas para generar Markdown.")
+            return
+
+        normalized_files = [
+            NORMALIZED_DIR / f"{issue_key}.json"
+            for issue_key in changed_issue_keys
+            if (NORMALIZED_DIR / f"{issue_key}.json").exists()
+        ]
+
+        print(f"Generando Markdown solo para tarjetas modificadas: {len(normalized_files)}")
+    else:
+        normalized_files = list(NORMALIZED_DIR.glob("*.json"))
+        print("No existe changed_issues.json. Generando Markdown de todo.")
 
     if not normalized_files:
         print("No hay archivos normalizados para generar Markdown.")

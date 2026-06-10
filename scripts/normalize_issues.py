@@ -16,6 +16,7 @@ NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 SYNC_DIR = BASE_DIR / "data" / "sync"
 CHANGED_FILE = SYNC_DIR / "changed_issues.json"
 
+NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
 
 # Crear los directorios si no existen
 def load_changed_issue_keys():
