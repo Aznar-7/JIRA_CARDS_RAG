@@ -13,8 +13,17 @@ JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw"
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
+SYNC_DIR = BASE_DIR / "data" / "sync"
+CHANGED_FILE = SYNC_DIR / "changed_issues.json"
 
-NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
+
+# Crear los directorios si no existen
+def load_changed_issue_keys():
+    if not CHANGED_FILE.exists():
+        return None
+
+    with open(CHANGED_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 # Extraer nombre del user
@@ -281,7 +290,23 @@ def normalize_issue(issue):
 
 # Ejecutar todo este bondi de normalización
 def main():
-    raw_files = list(RAW_DIR.glob("*.json"))
+    changed_issue_keys = load_changed_issue_keys()
+
+    if changed_issue_keys is not None:
+        if not changed_issue_keys:
+            print("No hay tarjetas nuevas o modificadas para normalizar.")
+            return
+
+        raw_files = [
+            RAW_DIR / f"{issue_key}.json"
+            for issue_key in changed_issue_keys
+            if (RAW_DIR / f"{issue_key}.json").exists()
+        ]
+
+        print(f"Normalizando solo tarjetas modificadas: {len(raw_files)}")
+    else:
+        raw_files = list(RAW_DIR.glob("*.json"))
+        print("No existe changed_issues.json. Normalizando todo.")
 
     if not raw_files:
         print("No hay archivos raw para normalizar.")
