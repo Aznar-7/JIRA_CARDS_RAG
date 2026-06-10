@@ -1,14 +1,16 @@
 import json
 from pathlib import Path
 
-
+# Config de directorios
 BASE_DIR = Path(__file__).resolve().parent.parent
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 MARKDOWN_DIR = BASE_DIR / "data" / "markdown"
 
 MARKDOWN_DIR.mkdir(parents=True, exist_ok=True)
 
+# Funciones para generar Markdown a partir de los datos normalizados ( issue normalizado -> markdown con formato estandar para cada tarjeta)
 
+# Funcion de formateo para evitar valores vacios o nulos en el markdown, y mostrar un guion en su lugar
 def value_or_dash(value):
     if value is None:
         return "-"
@@ -26,6 +28,7 @@ def list_or_dash(items):
     return ", ".join(str(item) for item in items)
 
 
+#Funcion de generacion del md
 def generate_markdown(issue):
     issue_key = value_or_dash(issue.get("issue_key"))
     title = value_or_dash(issue.get("title"))
