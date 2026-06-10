@@ -9,23 +9,24 @@ load_dotenv()
 
 JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
 
+# Config de directorios
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw"
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 
 NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
 
-
+# Extraer nombre del user
 def get_display_name(user_obj):
     if not user_obj:
         return None
 
     return user_obj.get("displayName") or user_obj.get("name") or user_obj.get("emailAddress")
 
-
+# Extraer nombre del sprint de la tarjeta
 def extract_sprint_name(sprint_field):
     """
-    Sprint puede venir como lista, objeto o None según configuración de Jira.
+    Sprint puede venir como lista, objeto o None según configuración de Jira., Podrian ponerlo estandard los culiados.
     """
     if not sprint_field:
         return None
@@ -47,7 +48,7 @@ def extract_sprint_name(sprint_field):
 
     return str(sprint_field)
 
-
+# Extraer Texto de la Descripción
 def extract_description_text(description):
     """
     Jira Cloud suele traer description en formato ADF:
@@ -83,7 +84,7 @@ def extract_description_text(description):
 
     return "\n".join(t for t in texts if t).strip() or None
 
-
+# Función Principal de Normalización
 def normalize_issue(issue):
     fields = issue.get("fields", {})
 
