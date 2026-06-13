@@ -1,0 +1,65 @@
+{
+  "issue_key": "DEMO-001",
+  "title": "Error 500 en validación de facturas con monto mayor a 10000",
+  "issue_type": "Bug",
+  "status": "Done",
+  "priority": "High",
+  "sprint": "SPRINT-01",
+  "glpi_ticket": "GLPI-1234",
+  "focus_area": "Backend",
+  "assignee": "María López",
+  "reporter": "Juan García",
+  "creator": "Juan García",
+  "resolved_by_inferred": "María López",
+  "created_at": "2026-01-10T10:00:00.000-0300",
+  "updated_at": "2026-01-15T18:30:00.000-0300",
+  "resolved_at": "2026-01-15T18:30:00.000-0300",
+  "description": "El sistema lanza un error 500 al intentar validar facturas cuyo monto supera 10000. El error ocurre en el endpoint POST /api/invoices/validate. Reproducible al 100%.",
+  "labels": ["billing", "backend"],
+  "components": ["API", "Validation"],
+  "comments": [
+    {
+      "id": "10001",
+      "author": "María López",
+      "created_at": "2026-01-12T14:00:00.000-0300",
+      "updated_at": "2026-01-12T14:00:00.000-0300",
+      "body": "Encontré el problema. El campo 'monto' usa tipo smallint que topa en 32767. El fix es migrar a integer. Voy a subir el PR."
+    },
+    {
+      "id": "10002",
+      "author": "Juan García",
+      "created_at": "2026-01-13T09:00:00.000-0300",
+      "updated_at": "2026-01-13T09:00:00.000-0300",
+      "body": "PR aprobado. Agendamos el deploy para el viernes."
+    }
+  ],
+  "attachments": [],
+  "issue_links": [
+    {
+      "direction": "outward",
+      "type": "blocks",
+      "issue_key": "DEMO-002",
+      "summary": "Implementar validación avanzada de facturas",
+      "status": "In Progress"
+    }
+  ],
+  "subtasks": [],
+  "history": [
+    {
+      "author": "María López",
+      "created_at": "2026-01-12T10:00:00.000-0300",
+      "field": "status",
+      "from": "To Do",
+      "to": "In Progress"
+    },
+    {
+      "author": "María López",
+      "created_at": "2026-01-15T18:30:00.000-0300",
+      "field": "status",
+      "from": "In Progress",
+      "to": "Done"
+    }
+  ],
+  "jira_url": "https://example.atlassian.net/browse/DEMO-001",
+  "raw_file": "data/raw/DEMO-001.json"
+}

@@ -1,0 +1,50 @@
+{
+  "issue_key": "DEMO-002",
+  "title": "Implementar validación avanzada de facturas",
+  "issue_type": "Story",
+  "status": "In Progress",
+  "priority": "Medium",
+  "sprint": "SPRINT-02",
+  "glpi_ticket": null,
+  "focus_area": "Backend",
+  "assignee": "Carlos Ruiz",
+  "reporter": "Ana Torres",
+  "creator": "Ana Torres",
+  "resolved_by_inferred": null,
+  "created_at": "2026-01-16T09:00:00.000-0300",
+  "updated_at": "2026-02-01T12:00:00.000-0300",
+  "resolved_at": null,
+  "description": "Agregar reglas de validación para facturas: rangos de monto permitidos, verificación de RUT proveedor, y control de duplicados por periodo.",
+  "labels": ["billing"],
+  "components": ["API", "Validation", "Database"],
+  "comments": [],
+  "attachments": [
+    {
+      "id": "20001",
+      "filename": "specs_validacion.pdf",
+      "mime_type": "application/pdf",
+      "size": 102400,
+      "author": "Ana Torres",
+      "created_at": "2026-01-16T09:30:00.000-0300",
+      "content_url": "https://example.atlassian.net/rest/api/3/attachment/content/20001",
+      "thumbnail_url": null,
+      "is_image": false
+    }
+  ],
+  "issue_links": [],
+  "subtasks": [
+    {"issue_key": "DEMO-004", "summary": "Validar rango de montos", "status": "Done"},
+    {"issue_key": "DEMO-005", "summary": "Verificar RUT proveedor", "status": "In Progress"}
+  ],
+  "history": [
+    {
+      "author": "Carlos Ruiz",
+      "created_at": "2026-01-17T08:00:00.000-0300",
+      "field": "status",
+      "from": "To Do",
+      "to": "In Progress"
+    }
+  ],
+  "jira_url": "https://example.atlassian.net/browse/DEMO-002",
+  "raw_file": "data/raw/DEMO-002.json"
+}
