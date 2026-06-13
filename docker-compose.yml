@@ -10,11 +10,13 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U jira_rag"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
 volumes:
   pgdata:
