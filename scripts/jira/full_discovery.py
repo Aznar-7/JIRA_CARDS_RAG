@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 from pathlib import Path
 import urllib3
@@ -20,7 +20,7 @@ JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
 JIRA_PROJECT_KEY = os.getenv("JIRA_PROJECT_KEY")
 
 # Config de directorios para guardar las respuestas completas de Jira
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 

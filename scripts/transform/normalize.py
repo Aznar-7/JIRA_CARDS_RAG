@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 from pathlib import Path
 
@@ -11,7 +11,7 @@ load_dotenv()
 JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
 
 # Directorios de entrada, salida y archivo con las tarjetas que cambiaron
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw"
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 SYNC_DIR = BASE_DIR / "data" / "sync"

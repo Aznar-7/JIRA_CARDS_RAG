@@ -1,8 +1,8 @@
-import json
+﻿import json
 from pathlib import Path
 
 # Directorios de entrada, salida y archivo con las tarjetas que cambiaron
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 NORMALIZED_DIR = BASE_DIR / "data" / "normalized"
 MARKDOWN_DIR = BASE_DIR / "data" / "markdown"
 SYNC_DIR = BASE_DIR / "data" / "sync"

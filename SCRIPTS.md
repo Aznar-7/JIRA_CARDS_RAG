@@ -5,22 +5,43 @@ script del proyecto. Todos calculan las rutas de datos desde la raíz del
 repositorio. Se recomienda ejecutar los comandos desde esa raíz para que
 `python-dotenv` también encuentre `.env` de forma confiable.
 
+## Estructura de directorios
+
+```
+scripts/
+  pipeline.py               ← orquestador principal
+  jira/
+    sync.py                 ← sincronización completa e incremental
+    discovery.py            ← validación de conexión y campos
+    full_discovery.py       ← muestra con detalle completo
+  transform/
+    detect_changes.py       ← detección de raws modificados
+    normalize.py            ← conversión al contrato normalizado
+    generate_markdown.py    ← documentos Markdown por tarjeta
+    generate_chunks.py      ← unidades temáticas para búsqueda
+  search/
+    build_embeddings.py     ← índice vectorial local
+    keyword_search.py       ← búsqueda literal
+    semantic_search.py      ← búsqueda semántica
+    hybrid_search.py        ← búsqueda combinada
+```
+
 ## Mapa rápido
 
 | Script | Función principal | Red |
 |---|---|:---:|
 | `pipeline.py` | Orquesta el procesamiento principal | Indirecta |
-| `sync_jira.py` | Sincroniza tarjetas completas desde Jira | Sí |
-| `detect_changed_issues.py` | Detecta raws nuevos o modificados | No |
-| `normalize_issues.py` | Convierte raws al contrato normalizado | No |
-| `generate_markdown.py` | Genera documentos por tarjeta | No |
-| `generate_chunks.py` | Genera unidades temáticas para búsqueda | No |
-| `build_embeddings.py` | Construye el índice vectorial local | Descarga modelo |
-| `search_chunks.py` | Ejecuta búsqueda literal | No |
-| `semantic_search.py` | Ejecuta búsqueda semántica | Descarga modelo |
-| `hybrid_search.py` | Combina búsqueda semántica y literal | Descarga modelo |
-| `jira_discovery.py` | Descubre conexión, campos y muestra de tarjetas | Sí |
-| `jira_full_discovery.py` | Descarga una muestra con detalle completo | Sí |
+| `jira/sync.py` | Sincroniza tarjetas completas desde Jira | Sí |
+| `transform/detect_changes.py` | Detecta raws nuevos o modificados | No |
+| `transform/normalize.py` | Convierte raws al contrato normalizado | No |
+| `transform/generate_markdown.py` | Genera documentos por tarjeta | No |
+| `transform/generate_chunks.py` | Genera unidades temáticas para búsqueda | No |
+| `search/build_embeddings.py` | Construye el índice vectorial local | Descarga modelo |
+| `search/keyword_search.py` | Ejecuta búsqueda literal | No |
+| `search/semantic_search.py` | Ejecuta búsqueda semántica | Descarga modelo |
+| `search/hybrid_search.py` | Combina búsqueda semántica y literal | Descarga modelo |
+| `jira/discovery.py` | Descubre conexión, campos y muestra de tarjetas | Sí |
+| `jira/full_discovery.py` | Descarga una muestra con detalle completo | Sí |
 
 ## `pipeline.py`
 
@@ -28,11 +49,11 @@ repositorio. Se recomienda ejecutar los comandos desde esa raíz para que
 
 Ejecuta, en orden:
 
-1. `sync_jira.py`
-2. `detect_changed_issues.py`
-3. `normalize_issues.py`
-4. `generate_markdown.py`
-5. `generate_chunks.py`
+1. `jira/sync.py`
+2. `transform/detect_changes.py`
+3. `transform/normalize.py`
+4. `transform/generate_markdown.py`
+5. `transform/generate_chunks.py`
 
 **Entradas**
 
@@ -57,7 +78,7 @@ python scripts/pipeline.py --mode full --max-results 100
 python scripts/pipeline.py --mode incremental --since "-1d"
 ```
 
-## `sync_jira.py`
+## `jira/sync.py`
 
 **Propósito:** buscar tarjetas del proyecto y guardar su detalle completo.
 
@@ -89,10 +110,10 @@ El script solo usa `GET`, con timeout de 60 segundos. Actualmente deshabilita la
 validación SSL mediante `verify=False`.
 
 ```powershell
-python scripts/sync_jira.py --mode incremental --max-results 50
+python scripts/jira/sync.py --mode incremental --max-results 50
 ```
 
-## `detect_changed_issues.py`
+## `transform/detect_changes.py`
 
 **Propósito:** evitar reprocesar tarjetas cuyo raw no cambió.
 
@@ -111,10 +132,10 @@ como modificada cuando no tiene hash previo o el hash cambió. Si no hay raws,
 informa la situación y no escribe nuevos archivos de estado.
 
 ```powershell
-python scripts/detect_changed_issues.py
+python scripts/transform/detect_changes.py
 ```
 
-## `normalize_issues.py`
+## `transform/normalize.py`
 
 **Propósito:** reducir la respuesta extensa y variable de Jira a un contrato
 local consistente.
@@ -149,10 +170,10 @@ procesa todos los raws. Si la lista existe pero está vacía, no hace trabajo.
 - Área de enfoque: `customfield_10237`
 
 ```powershell
-python scripts/normalize_issues.py
+python scripts/transform/normalize.py
 ```
 
-## `generate_markdown.py`
+## `transform/generate_markdown.py`
 
 **Propósito:** crear una representación legible y trazable por tarjeta.
 
@@ -173,10 +194,10 @@ Al igual que la normalización, procesa solo cambios si existe el listado y
 procesa todo cuando el listado todavía no fue creado.
 
 ```powershell
-python scripts/generate_markdown.py
+python scripts/transform/generate_markdown.py
 ```
 
-## `generate_chunks.py`
+## `transform/generate_chunks.py`
 
 **Propósito:** dividir cada tarjeta en unidades temáticas recuperables.
 
@@ -203,10 +224,10 @@ repetida para filtros. Los adjuntos se representan por metadata; su contenido
 no se descarga.
 
 ```powershell
-python scripts/generate_chunks.py
+python scripts/transform/generate_chunks.py
 ```
 
-## `build_embeddings.py`
+## `search/build_embeddings.py`
 
 **Propósito:** construir un índice vectorial local a partir de todos los chunks.
 
@@ -229,10 +250,10 @@ El modelo puede descargarse durante la primera ejecución. Debe reconstruirse el
 reflejen los datos actuales.
 
 ```powershell
-python scripts/build_embeddings.py
+python scripts/search/build_embeddings.py
 ```
 
-## `search_chunks.py`
+## `search/keyword_search.py`
 
 **Propósito:** búsqueda local literal sin modelo ni índice vectorial.
 
@@ -251,10 +272,10 @@ stopwords. Puntúa coincidencias en el texto y metadata, con bonus para título,
 key Jira y GLPI. Solo muestra chunks con score mayor que cero.
 
 ```powershell
-python scripts/search_chunks.py "error permisos" --status "Finalizada" --limit 5
+python scripts/search/keyword_search.py "error permisos" --status "Finalizada" --limit 5
 ```
 
-## `semantic_search.py`
+## `search/semantic_search.py`
 
 **Propósito:** recuperar chunks por significado, aunque no compartan palabras
 exactas con la consulta.
@@ -278,10 +299,10 @@ No aplica umbral mínimo: muestra hasta `--limit` candidatos aunque la similitud
 sea baja.
 
 ```powershell
-python scripts/semantic_search.py "usuarios que no pueden acceder" --limit 5
+python scripts/search/semantic_search.py "usuarios que no pueden acceder" --limit 5
 ```
 
-## `hybrid_search.py`
+## `search/hybrid_search.py`
 
 **Propósito:** combinar recuperación semántica con señales literales fuertes,
 como keys, tickets GLPI y nombres concretos.
@@ -307,12 +328,12 @@ score final = score semántico normalizado * semantic_weight
 Los pesos no se validan ni se fuerzan a sumar `1`.
 
 ```powershell
-python scripts/hybrid_search.py "PE20-1034 autenticación" `
+python scripts/search/hybrid_search.py "PE20-1034 autenticación" `
   --semantic-weight 0.4 `
   --literal-weight 0.6
 ```
 
-## `jira_discovery.py`
+## `jira/discovery.py`
 
 **Propósito:** validar una nueva configuración Jira y descubrir campos útiles.
 
@@ -340,10 +361,10 @@ respuesta completa con una muestra parcial. Después del discovery conviene
 ejecutar nuevamente `sync_jira.py` o `pipeline.py`.
 
 ```powershell
-python scripts/jira_discovery.py
+python scripts/jira/discovery.py
 ```
 
-## `jira_full_discovery.py`
+## `jira/full_discovery.py`
 
 **Propósito:** inspeccionar la estructura completa de una muestra reciente.
 
@@ -360,24 +381,24 @@ con los mismos `fields` y `expand` usados por `sync_jira.py`. La cantidad está
 fijada en el código y no expone argumentos CLI.
 
 ```powershell
-python scripts/jira_full_discovery.py
+python scripts/jira/full_discovery.py
 ```
 
 ## Dependencias entre scripts
 
 ```text
-jira_discovery.py -----------------------------> data/fields + muestra raw
-jira_full_discovery.py ------------------------> muestra raw completa
+jira/discovery.py -----------------------------> data/fields + muestra raw
+jira/full_discovery.py ------------------------> muestra raw completa
 
-sync_jira.py
-  -> detect_changed_issues.py
-  -> normalize_issues.py
-  -> generate_markdown.py
-  -> generate_chunks.py
-       -> search_chunks.py
-       -> build_embeddings.py
-            -> semantic_search.py
-            -> hybrid_search.py
+jira/sync.py
+  -> transform/detect_changes.py
+  -> transform/normalize.py
+  -> transform/generate_markdown.py
+  -> transform/generate_chunks.py
+       -> search/keyword_search.py
+       -> search/build_embeddings.py
+            -> search/semantic_search.py
+            -> search/hybrid_search.py
 ```
 
 Para una operación normal, usar `pipeline.py`, luego `build_embeddings.py` y

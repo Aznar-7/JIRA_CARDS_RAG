@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import json
 import os
 import sys
@@ -23,7 +23,7 @@ JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
 JIRA_PROJECT_KEY = os.getenv("JIRA_PROJECT_KEY")
 
 # Config de directorios para guardar los json raw y el estado del ultimo sync
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw"
 SYNC_DIR = BASE_DIR / "data" / "sync"
 SYNC_STATE_FILE = SYNC_DIR / "sync_state.json"

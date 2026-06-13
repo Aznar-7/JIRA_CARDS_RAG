@@ -1,11 +1,11 @@
-import json
+﻿import json
 from pathlib import Path
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 CHUNKS_DIR = BASE_DIR / "data" / "chunks"
 EMBEDDINGS_DIR = BASE_DIR / "data" / "embeddings"

@@ -1,10 +1,10 @@
-import hashlib
+﻿import hashlib
 import json
 from pathlib import Path
 
 
 # Directorios que usa este paso para leer los raw y guardar el resultado
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 RAW_DIR = BASE_DIR / "data" / "raw"
 HASH_DIR = BASE_DIR / "data" / "hashes"

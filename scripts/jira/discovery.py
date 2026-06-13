@@ -1,4 +1,4 @@
-import urllib3
+﻿import urllib3
 import os
 import json
 from pathlib import Path
@@ -17,7 +17,7 @@ JIRA_API_TOKEN=os.getenv("JIRA_API_TOKEN")
 JIRA_PROJECT_KEY=os.getenv("JIRA_PROJECT_KEY")
 
 # Config de directorios (se crean si no existen)
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 RAW_DIR= BASE_DIR / "data" / "raw"
 FIELDS_DIR= BASE_DIR / "data" / "fields"
 

@@ -1,4 +1,4 @@
-# Buscador local para probar los chunks antes de sumar embeddings o una base vectorial
+﻿# Buscador local para probar los chunks antes de sumar embeddings o una base vectorial
 
 import argparse
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 # Directorio donde generate_chunks.py deja los archivos listos para buscar
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CHUNKS_DIR = BASE_DIR / "data" / "chunks"
 
 

@@ -166,7 +166,7 @@ def main():
     # Primero armamos el comando de sync con los argumentos que llegaron al pipeline
     sync_command = [
         python_executable,
-        str(SCRIPTS_DIR / "sync_jira.py"),
+        str(SCRIPTS_DIR / "jira" / "sync.py"),
         "--mode",
         args.mode,
         "--max-results",
@@ -186,28 +186,28 @@ def main():
             "name": "Detección de tarjetas nuevas o modificadas",
             "command": [
                 python_executable,
-                str(SCRIPTS_DIR / "detect_changed_issues.py")
+                str(SCRIPTS_DIR / "transform" / "detect_changes.py")
             ],
         },
         {
             "name": "Normalización de tarjetas",
             "command": [
                 python_executable,
-                str(SCRIPTS_DIR / "normalize_issues.py")
+                str(SCRIPTS_DIR / "transform" / "normalize.py")
             ],
         },
         {
             "name": "Generación de Markdown",
             "command": [
                 python_executable,
-                str(SCRIPTS_DIR / "generate_markdown.py")
+                str(SCRIPTS_DIR / "transform" / "generate_markdown.py")
             ],
         },
         {
             "name": "Generación de chunks RAG",
             "command": [
                 python_executable,
-                str(SCRIPTS_DIR / "generate_chunks.py")
+                str(SCRIPTS_DIR / "transform" / "generate_chunks.py")
     ],
 },
     ]
