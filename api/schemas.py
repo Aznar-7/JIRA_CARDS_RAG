@@ -1,9 +1,11 @@
 # api/schemas.py
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class ConversationMessage(BaseModel):
-    role: str  # "user" or "assistant"
+    role: Literal["user", "assistant"]
     content: str
 
 
@@ -22,8 +24,8 @@ class SearchResult(BaseModel):
     text: str
     score: float
     jira_url: str
-    status: str
-    sprint: str
+    status: str | None = None
+    sprint: str | None = None
 
 
 class SearchResponse(BaseModel):
@@ -33,7 +35,7 @@ class SearchResponse(BaseModel):
 
 class RagRequest(BaseModel):
     question: str = Field(..., min_length=1)
-    history: list[ConversationMessage] = Field(default_factory=list)
+    history: list[ConversationMessage] = Field(default_factory=list, max_length=20)
     status: str | None = None
     sprint: str | None = None
 
@@ -45,3 +47,8 @@ class Source(BaseModel):
     chunk_type: str
     jira_url: str
     score: float
+
+
+class RagResponse(BaseModel):
+    answer: str
+    sources: list[Source]
