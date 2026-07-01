@@ -60,7 +60,7 @@ def ingest_all() -> None:
                 continue
 
             texts = [c["text"] for c in chunks]
-            embeddings = embed_texts(texts)
+            embeddings = embed_texts(texts, show_progress=True)
 
             with conn.cursor() as cur:
                 # Upsert issue
@@ -82,7 +82,7 @@ def ingest_all() -> None:
                         updated_at = EXCLUDED.updated_at, ingested_at = NOW()
                     """,
                     {
-                        "issue_key": issue.get("issue_key"),
+                        "issue_key": issue["issue_key"],
                         "title": issue.get("title"),
                         "issue_type": issue.get("issue_type"),
                         "status": issue.get("status"),
@@ -125,4 +125,8 @@ def ingest_all() -> None:
 
 
 if __name__ == "__main__":
-    ingest_all()
+    try:
+        ingest_all()
+    except Exception as exc:
+        print(f"Ingest failed: {exc}", file=sys.stderr)
+        sys.exit(1)
