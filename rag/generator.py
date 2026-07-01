@@ -6,6 +6,16 @@ import anthropic
 from core.config import settings
 from rag.context import build_context
 
+_client: anthropic.AsyncAnthropic | None = None
+
+
+def _get_client() -> anthropic.AsyncAnthropic:
+    global _client
+    if _client is None:
+        _client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    return _client
+
+
 _SYSTEM_PROMPT = """\
 You are a helpful assistant that answers questions about Jira project tickets.
 
@@ -31,7 +41,7 @@ async def stream_answer(
     history: list[dict],
 ) -> AsyncIterator[str]:
     """Streams the LLM answer token by token."""
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = _get_client()
     context = build_context(chunks)
 
     messages = []

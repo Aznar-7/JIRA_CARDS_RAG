@@ -3,6 +3,15 @@ import anthropic
 
 from core.config import settings
 
+_client: anthropic.AsyncAnthropic | None = None
+
+
+def _get_client() -> anthropic.AsyncAnthropic:
+    global _client
+    if _client is None:
+        _client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    return _client
+
 
 def build_context(chunks: list[dict]) -> str:
     """Wraps each chunk in tagged blocks to prevent prompt injection."""
@@ -20,7 +29,7 @@ async def condense_question(question: str, history: list[dict]) -> str:
     if not history:
         return question
 
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = _get_client()
 
     history_text = "\n".join(
         f"{m['role']}: {m['content'][:300]}" for m in history[-4:]
