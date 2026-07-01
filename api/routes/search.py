@@ -32,8 +32,8 @@ async def search_chunks(request: SearchRequest):
             text=r["text"][:500],
             score=round(r["score"], 4),
             jira_url=r["jira_url"],
-            status=r["status"],
-            sprint=r["sprint"],
+            status=r["status"] or None,
+            sprint=r["sprint"] or None,
         )
         for r in raw_results
     ]
