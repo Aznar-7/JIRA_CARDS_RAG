@@ -1,11 +1,10 @@
 # db/repository.py
 import json
-import re
 
 import numpy as np
 import psycopg
 
-from core.text import normalize_text
+from core.text import normalize_text, tokenize
 
 
 async def upsert_issue(conn: psycopg.AsyncConnection, issue: dict) -> None:
@@ -63,22 +62,23 @@ async def upsert_chunks(
     chunks: list[dict],
     embeddings: np.ndarray,
 ) -> None:
-    # Delete existing chunks for this issue before re-inserting
-    await conn.execute("DELETE FROM chunks WHERE issue_key = %s", [issue_key])
-
-    for chunk, embedding in zip(chunks, embeddings):
-        await conn.execute(
+    async with conn.transaction():
+        await conn.execute("DELETE FROM chunks WHERE issue_key = %s", [issue_key])
+        await conn.executemany(
             """
             INSERT INTO chunks (chunk_id, issue_key, chunk_type, text, embedding, metadata)
             VALUES (%s, %s, %s, %s, %s, %s)
             """,
             [
-                chunk["id"],
-                chunk["issue_key"],
-                chunk["chunk_type"],
-                chunk["text"],
-                embedding,
-                json.dumps(chunk.get("metadata", {})),
+                (
+                    chunk["id"],
+                    chunk["issue_key"],
+                    chunk["chunk_type"],
+                    chunk["text"],
+                    embedding,
+                    json.dumps(chunk.get("metadata", {})),
+                )
+                for chunk, embedding in zip(chunks, embeddings)
             ],
         )
 
@@ -95,10 +95,10 @@ async def hybrid_search(
     params: list = [query_embedding, limit * 3]
 
     if status:
-        filters.append(f"metadata->>'status' ILIKE %s")
+        filters.append("metadata->>'status' ILIKE %s")
         params.append(f"%{status}%")
     if sprint:
-        filters.append(f"metadata->>'sprint' ILIKE %s")
+        filters.append("metadata->>'sprint' ILIKE %s")
         params.append(f"%{sprint}%")
 
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
@@ -116,8 +116,7 @@ async def hybrid_search(
     )
     rows = await rows.fetchall()
 
-    # Apply simple keyword boost in Python
-    terms = [t for t in re.findall(r"\w+", normalize_text(query_text)) if len(t) > 2]
+    terms = tokenize(query_text)
 
     results = []
     for row in rows:
