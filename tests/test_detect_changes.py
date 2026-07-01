@@ -1,41 +1,26 @@
 # tests/test_detect_changes.py
 import json
-import tempfile
 from pathlib import Path
 from scripts.transform.detect_changes import calculate_file_hash
 
 
-def test_same_content_same_hash():
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump({"key": "DEMO-001", "value": 42}, f)
-        path = Path(f.name)
-
-    hash1 = calculate_file_hash(path)
-    hash2 = calculate_file_hash(path)
-    assert hash1 == hash2
-    path.unlink()
+def test_same_content_same_hash(tmp_path):
+    p = tmp_path / "test.json"
+    p.write_text(json.dumps({"key": "DEMO-001", "value": 42}))
+    assert calculate_file_hash(p) == calculate_file_hash(p)
 
 
-def test_different_content_different_hash():
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f1:
-        json.dump({"key": "DEMO-001"}, f1)
-        path1 = Path(f1.name)
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f2:
-        json.dump({"key": "DEMO-002"}, f2)
-        path2 = Path(f2.name)
-
-    assert calculate_file_hash(path1) != calculate_file_hash(path2)
-    path1.unlink()
-    path2.unlink()
+def test_different_content_different_hash(tmp_path):
+    p1 = tmp_path / "a.json"
+    p2 = tmp_path / "b.json"
+    p1.write_text(json.dumps({"key": "DEMO-001"}))
+    p2.write_text(json.dumps({"key": "DEMO-002"}))
+    assert calculate_file_hash(p1) != calculate_file_hash(p2)
 
 
-def test_hash_is_64_hex_chars():
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump({"x": 1}, f)
-        path = Path(f.name)
-
-    h = calculate_file_hash(path)
+def test_hash_is_64_hex_chars(tmp_path):
+    p = tmp_path / "test.json"
+    p.write_text(json.dumps({"x": 1}))
+    h = calculate_file_hash(p)
     assert len(h) == 64
     assert all(c in "0123456789abcdef" for c in h)
-    path.unlink()
