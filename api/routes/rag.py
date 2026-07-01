@@ -1,8 +1,11 @@
 # api/routes/rag.py
 import json
+import logging
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+
+logger = logging.getLogger(__name__)
 
 from api.schemas import RagRequest
 from db.connection import get_conn
@@ -60,7 +63,8 @@ async def rag_query(request: RagRequest):
             ]
             yield f"data: {json.dumps({'type': 'sources', 'sources': sources})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
-        except Exception as exc:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+        except Exception:
+            logger.exception("rag_query stream failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'internal error'})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
